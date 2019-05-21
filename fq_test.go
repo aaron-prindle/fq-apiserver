@@ -54,7 +54,7 @@ func consumeQueue(t *testing.T, fq *FQScheduler, descs []flowDesc) (float64, err
 
 	for i, ok := fq.Dequeue(); ok; i, ok = fq.Dequeue() {
 		// callback to update virtualtime w/ correct service time for request
-		i.finishRequest(fq)
+		fq.FinishPacket(i)
 
 		it := i
 		seq := seqs[it.queueidx]
@@ -70,7 +70,6 @@ func consumeQueue(t *testing.T, fq *FQScheduler, descs []flowDesc) (float64, err
 		cnt[it.queueidx] += it.size
 
 		// if # of active flows is equal to the # of total flows, add to total
-		// we are correctly taking a bit from each
 		if len(active) == len(descs) {
 			acnt[it.queueidx] += it.size
 			total += it.size
@@ -143,7 +142,7 @@ func TestOneBurstingFlow(t *testing.T) {
 
 func flowStdDevTest(t *testing.T, flows []flowDesc, expectedStdDev float64) {
 	runtime.GOMAXPROCS(runtime.NumCPU())
-	queues := initQueues(len(flows), 0)
+	queues := initQueues(len(flows))
 
 	// a fake clock that returns the current time is used for enqueing which
 	// returns the same time (now)
