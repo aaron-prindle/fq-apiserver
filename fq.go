@@ -8,12 +8,15 @@ import (
 	"k8s.io/apimachinery/pkg/util/clock"
 )
 
+// FQScheduler is a fair queuing implementation designed for the kube-apiserver.
+// FQ is designed for
+// 1) dispatching requests to be served rather than packets to be transmitted
+// 2) serving multiple requests at once
+// 3) accounting for unknown and varying service time
 type FQScheduler struct {
-	lock   sync.Mutex
-	queues []*Queue
-	clock  clock.Clock
-	// Verify float64 has enough bits
-	// We will want to be careful about having enough bits. For example, in float64, 1e20 + 1e0 == 1e20.
+	lock         sync.Mutex
+	queues       []*Queue
+	clock        clock.Clock
 	vt           float64
 	C            float64
 	G            float64
@@ -21,7 +24,6 @@ type FQScheduler struct {
 	robinidx     int
 }
 
-// TODO(aaron-prindle) add concurrency enforcement - 'C'
 func (q *FQScheduler) chooseQueue(packet *Packet) *Queue {
 	if packet.queueidx < 0 || packet.queueidx > len(q.queues) {
 		panic("no matching queue for packet")
@@ -38,18 +40,18 @@ func NewFQScheduler(queues []*Queue, clock clock.Clock) *FQScheduler {
 	return fq
 }
 
-// TODO(aaron-prindle) verify that the time units are correct/matching
 func (q *FQScheduler) nowAsUnixNano() float64 {
 	return float64(q.clock.Now().UnixNano())
 }
 
+// Enqueue enqueues a packet into the fair queuing scheduler
 func (q *FQScheduler) Enqueue(packet *Packet) {
 	q.lock.Lock()
 	defer q.lock.Unlock()
 	q.synctime()
 
 	queue := q.chooseQueue(packet)
-	queue.enqueue(packet)
+	queue.Enqueue(packet)
 	q.updateTime(packet, queue)
 }
 
@@ -95,11 +97,16 @@ func (q *FQScheduler) updateTime(packet *Packet, queue *Queue) {
 	}
 }
 
+// FinishPacketAndDequeue is a convenience method used using the FQScheduler
+// at the concurrency limit
 func (q *FQScheduler) FinishPacketAndDeque(p *Packet) (*Packet, bool) {
 	q.FinishPacket(p)
 	return q.Dequeue()
 }
 
+// FinishPacket is a callback that should be used when a previously dequeud packet
+// has completed it's service.  This callback updates imporatnt state in the
+//  FQScheduler
 func (q *FQScheduler) FinishPacket(p *Packet) {
 	q.lock.Lock()
 	defer q.lock.Unlock()
@@ -115,6 +122,7 @@ func (q *FQScheduler) FinishPacket(p *Packet) {
 	q.queues[p.queueidx].RequestsExecuting--
 }
 
+// Dequeue dequeues a packet from the fair queuing scheduler
 func (q *FQScheduler) Dequeue() (*Packet, bool) {
 	q.lock.Lock()
 	defer q.lock.Unlock()
@@ -125,7 +133,7 @@ func (q *FQScheduler) Dequeue() (*Packet, bool) {
 	if queue == nil {
 		return nil, false
 	}
-	packet, ok := queue.dequeue()
+	packet, ok := queue.Dequeue()
 
 	if ok {
 		// When a request is dequeued for service -> q.virstart += G

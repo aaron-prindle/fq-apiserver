@@ -142,7 +142,7 @@ func TestOneBurstingFlow(t *testing.T) {
 
 func flowStdDevTest(t *testing.T, flows []flowDesc, expectedStdDev float64) {
 	runtime.GOMAXPROCS(runtime.NumCPU())
-	queues := initQueues(len(flows))
+	queues := InitQueues(len(flows))
 
 	// a fake clock that returns the current time is used for enqueing which
 	// returns the same time (now)
