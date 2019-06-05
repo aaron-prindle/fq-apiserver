@@ -33,15 +33,12 @@ func (q *FQScheduler) chooseQueue(packet *Packet) *Queue {
 
 func NewFQScheduler(queues []*Queue, clock clock.Clock) *FQScheduler {
 	fq := &FQScheduler{
-		queues: queues,
-		clock:  clock,
-		vt:     0,
+		queues:       queues,
+		clock:        clock,
+		vt:           0,
+		lastRealTime: clock.Now(),
 	}
 	return fq
-}
-
-func (q *FQScheduler) nowAsUnixNano() float64 {
-	return float64(q.clock.Now().UnixNano())
 }
 
 // Enqueue enqueues a packet into the fair queuing scheduler
@@ -61,9 +58,9 @@ func (q *FQScheduler) getVirtualTime() float64 {
 
 func (q *FQScheduler) synctime() {
 	realNow := q.clock.Now()
-	timesincelast := realNow.Sub(q.lastRealTime).Nanoseconds()
+	timesincelast := realNow.Sub(q.lastRealTime).Seconds()
 	q.lastRealTime = realNow
-	q.vt += float64(timesincelast) * q.getvirtualtimeratio()
+	q.vt += timesincelast * q.getvirtualtimeratio()
 }
 
 func (q *FQScheduler) getvirtualtimeratio() float64 {
@@ -126,8 +123,7 @@ func (q *FQScheduler) FinishPacket(p *Packet) {
 func (q *FQScheduler) Dequeue() (*Packet, bool) {
 	q.lock.Lock()
 	defer q.lock.Unlock()
-	// TODO(aaron-prindle) unsure if this should be here...
-	// q.synctime()
+	q.synctime()
 	queue := q.selectQueue()
 
 	if queue == nil {

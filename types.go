@@ -37,6 +37,7 @@ func (q *Queue) Dequeue() (*Packet, bool) {
 	}
 	packet := q.Packets[0]
 	q.Packets = q.Packets[1:]
+
 	return packet, true
 }
 
