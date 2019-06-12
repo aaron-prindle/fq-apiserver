@@ -58,7 +58,7 @@ func (q *Queue) VirtualFinish(J int, G float64) float64 {
 	// The virtual finish time of request number J in the queue
 	// (counting from J=1 for the head) is J * G + (virtual start time).
 
-	J++ // counting from J=1 for the head (eg: queue.Packets[0] -> J=1)
-	jg := float64(J) * float64(G)
+	// counting from J=1 for the head (eg: queue.Packets[0] -> J=1) - J+1
+	jg := float64(J+1) * float64(G)
 	return jg + q.virstart
 }

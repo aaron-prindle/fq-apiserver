@@ -15,7 +15,7 @@ import (
 
 type flowDesc struct {
 	// In
-	ftotal int     // Total units in flow
+	ftotal float64 // Total units in flow
 	imin   float64 // Min Packet servicetime
 	imax   float64 // Max Packet servicetime
 
@@ -25,16 +25,16 @@ type flowDesc struct {
 }
 
 func genFlow(fq *FQScheduler, desc *flowDesc, key int) {
-	for i, t := 1, 0; t < desc.ftotal; i++ {
+	for i, t := 1, float64(0); t < desc.ftotal; i++ {
 		it := new(Packet)
 		it.queueidx = key
 		if desc.imin == desc.imax {
 			it.servicetime = desc.imax
 		} else {
-			it.servicetime = min + rand.Float64()*(desc.imax-desc.imin)
+			it.servicetime = desc.imin + rand.Float64()*(desc.imax-desc.imin)
 		}
-		if t+it.servicetime > desc.ftotal {
-			it.servicetime = desc.ftotal - t
+		if float64(t)+it.servicetime > desc.ftotal {
+			it.servicetime = desc.ftotal - float64(t)
 		}
 		t += it.servicetime
 		it.seq = i
@@ -45,12 +45,10 @@ func genFlow(fq *FQScheduler, desc *flowDesc, key int) {
 
 func consumeQueue(t *testing.T, fq *FQScheduler, descs []flowDesc) (float64, error) {
 	active := make(map[int]bool)
-	var total int
-	acnt := make(map[int]int)
-	cnt := make(map[int]int)
+	var total float64
+	acnt := make(map[int]float64)
+	cnt := make(map[int]float64)
 	seqs := make(map[int]int)
-
-	wsum := uint64(len(descs))
 
 	for i, ok := fq.Dequeue(); ok; i, ok = fq.Dequeue() {
 		// callback to update virtualtime w/ correct service time for request
@@ -89,11 +87,11 @@ func consumeQueue(t *testing.T, fq *FQScheduler, descs []flowDesc) (float64, err
 		// flows in this test have same expected # of requests
 		// idealPercent = total-all-active/len(flows) / total-all-active
 		// "how many bytes/requests you expect for this flow - all-active"
-		descs[key].idealPercent = float64(100) / float64(wsum)
+		descs[key].idealPercent = float64(100) / float64(len(descs))
 
 		// actualPercent = requests-for-this-flow-all-active / total-reqs
 		// "how many bytes/requests you got for this flow - all-active"
-		descs[key].actualPercent = (float64(acnt[key]) / float64(total)) * 100
+		descs[key].actualPercent = (acnt[key] / total) * 100
 
 		x := descs[key].idealPercent - descs[key].actualPercent
 		x *= x

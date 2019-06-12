@@ -18,7 +18,7 @@ type FQScheduler struct {
 	queues       []*Queue
 	clock        clock.Clock
 	vt           float64
-	C            float64
+	C            int
 	G            float64
 	lastRealTime time.Time
 	robinidx     int
@@ -161,7 +161,7 @@ func (q *FQScheduler) selectQueue() *Queue {
 			if curvirfinish < minvirfinish {
 				minvirfinish = curvirfinish
 				minqueue = queue
-				minidx = q.robinidx
+				minidx = idx
 			}
 		}
 	}
