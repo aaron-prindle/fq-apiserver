@@ -15,7 +15,7 @@ import (
 // 3) accounting for unknown and varying service time
 type FQScheduler struct {
 	lock         sync.Mutex
-	queues       []*Queue
+	Queues       []*Queue
 	clock        clock.Clock
 	vt           float64
 	C            int
@@ -25,15 +25,15 @@ type FQScheduler struct {
 }
 
 func (q *FQScheduler) chooseQueue(packet *Packet) *Queue {
-	if packet.queueidx < 0 || packet.queueidx > len(q.queues) {
+	if packet.queueidx < 0 || packet.queueidx > len(q.Queues) {
 		panic("no matching queue for packet")
 	}
-	return q.queues[packet.queueidx]
+	return q.Queues[packet.queueidx]
 }
 
 func NewFQScheduler(queues []*Queue, clock clock.Clock) *FQScheduler {
 	fq := &FQScheduler{
-		queues:       queues,
+		Queues:       queues,
 		clock:        clock,
 		vt:           0,
 		lastRealTime: clock.Now(),
@@ -68,7 +68,7 @@ func (q *FQScheduler) synctime() {
 func (q *FQScheduler) getvirtualtimeratio() float64 {
 	NEQ := 0
 	reqs := 0
-	for _, queue := range q.queues {
+	for _, queue := range q.Queues {
 		reqs += queue.RequestsExecuting
 		// It might be best to delete this line. If everything is working
 		//  correctly, there will be no waiting packets if reqs < C on current
@@ -115,10 +115,10 @@ func (q *FQScheduler) FinishPacket(p *Packet) {
 
 	// When a request finishes being served, and the actual service time was S,
 	// the queue’s virtual start time is decremented by G - S.
-	q.queues[p.queueidx].virstart -= q.G - S
+	q.Queues[p.queueidx].virstart -= q.G - S
 
 	// request has finished, remove from requests executing
-	q.queues[p.queueidx].RequestsExecuting--
+	q.Queues[p.queueidx].RequestsExecuting--
 }
 
 // Dequeue dequeues a packet from the fair queuing scheduler
@@ -145,7 +145,7 @@ func (q *FQScheduler) Dequeue() (*Packet, bool) {
 }
 
 func (q *FQScheduler) roundrobinqueue() int {
-	q.robinidx = (q.robinidx + 1) % len(q.queues)
+	q.robinidx = (q.robinidx + 1) % len(q.Queues)
 	return q.robinidx
 }
 
@@ -153,9 +153,9 @@ func (q *FQScheduler) selectQueue() *Queue {
 	minvirfinish := math.Inf(1)
 	var minqueue *Queue
 	var minidx int
-	for range q.queues {
+	for range q.Queues {
 		idx := q.roundrobinqueue()
-		queue := q.queues[idx]
+		queue := q.Queues[idx]
 		if len(queue.Packets) != 0 {
 			curvirfinish := queue.VirtualFinish(0, q.G)
 			if curvirfinish < minvirfinish {
