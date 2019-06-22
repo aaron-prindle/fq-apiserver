@@ -1,4 +1,4 @@
-module github.com/aaron-prindle/fq
+module github.com/aaron-prindle/fq-apiserver
 
 go 1.12
 
