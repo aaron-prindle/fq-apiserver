@@ -12,7 +12,7 @@ const DEFAULT_G = 1 //   1 second (virtual time is in seconds)
 type Packet struct {
 	item        interface{}
 	servicetime float64
-	queueidx    int
+	QueueIdx    int
 	seq         int
 	startTime   time.Time
 }

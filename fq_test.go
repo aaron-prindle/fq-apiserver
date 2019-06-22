@@ -27,7 +27,7 @@ type flowDesc struct {
 func genFlow(fq *FQScheduler, desc *flowDesc, key int) {
 	for i, t := 1, float64(0); t < desc.ftotal; i++ {
 		it := new(Packet)
-		it.queueidx = key
+		it.QueueIdx = key
 		if desc.imin == desc.imax {
 			it.servicetime = desc.imax
 		} else {
@@ -55,26 +55,26 @@ func consumeQueue(t *testing.T, fq *FQScheduler, descs []flowDesc) (float64, err
 		fq.FinishPacket(i)
 
 		it := i
-		seq := seqs[it.queueidx]
+		seq := seqs[it.QueueIdx]
 		if seq+1 != it.seq {
-			return 0, fmt.Errorf("Packet for flow %d came out of queue out-of-order: expected %d, got %d", it.queueidx, seq+1, it.seq)
+			return 0, fmt.Errorf("Packet for flow %d came out of queue out-of-order: expected %d, got %d", it.QueueIdx, seq+1, it.seq)
 		}
-		seqs[it.queueidx] = it.seq
+		seqs[it.QueueIdx] = it.seq
 
 		// set the flow this item is a part of to active
-		active[it.queueidx] = true
+		active[it.QueueIdx] = true
 
-		cnt[it.queueidx] += it.servicetime
+		cnt[it.QueueIdx] += it.servicetime
 
 		// if # of active flows is equal to the # of total flows, add to total
 		if len(active) == len(descs) {
-			acnt[it.queueidx] += it.servicetime
+			acnt[it.QueueIdx] += it.servicetime
 			total += it.servicetime
 		}
 
 		// if all items have been processed from the flow, remove it from active
-		if cnt[it.queueidx] == descs[it.queueidx].ftotal {
-			delete(active, it.queueidx)
+		if cnt[it.QueueIdx] == descs[it.QueueIdx].ftotal {
+			delete(active, it.QueueIdx)
 		}
 	}
 

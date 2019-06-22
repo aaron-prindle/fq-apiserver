@@ -25,10 +25,10 @@ type FQScheduler struct {
 }
 
 func (q *FQScheduler) chooseQueue(packet *Packet) *Queue {
-	if packet.queueidx < 0 || packet.queueidx > len(q.Queues) {
+	if packet.QueueIdx < 0 || packet.QueueIdx > len(q.Queues) {
 		panic("no matching queue for packet")
 	}
-	return q.Queues[packet.queueidx]
+	return q.Queues[packet.QueueIdx]
 }
 
 func NewFQScheduler(queues []*Queue, clock clock.Clock) *FQScheduler {
@@ -115,10 +115,10 @@ func (q *FQScheduler) FinishPacket(p *Packet) {
 
 	// When a request finishes being served, and the actual service time was S,
 	// the queue’s virtual start time is decremented by G - S.
-	q.Queues[p.queueidx].virstart -= q.G - S
+	q.Queues[p.QueueIdx].virstart -= q.G - S
 
 	// request has finished, remove from requests executing
-	q.Queues[p.queueidx].RequestsExecuting--
+	q.Queues[p.QueueIdx].RequestsExecuting--
 }
 
 // Dequeue dequeues a packet from the fair queuing scheduler
