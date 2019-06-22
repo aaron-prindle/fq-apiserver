@@ -11,13 +11,38 @@ import (
 	"k8s.io/apimachinery/pkg/util/clock"
 )
 
+// TestPacket is a temporary container for "requests" with additional tracking fields
+// required for the functionality FQScheduler
+type TestPacket struct {
+	item        interface{}
+	servicetime float64
+	QueueIdx    int
+	seq         int
+	startTime   time.Time
+}
+
+func (p *TestPacket) GetServiceTime() float64 {
+	return p.servicetime
+}
+func (p *TestPacket) GetQueueIdx() int {
+	return p.QueueIdx
+
+}
+func (p *TestPacket) GetStartTime() time.Time {
+	return p.startTime
+}
+func (p *TestPacket) SetStartTime(starttime time.Time) {
+	p.startTime = starttime
+
+}
+
 // adapted from https://github.com/tadglines/wfq/blob/master/wfq_test.go
 
 type flowDesc struct {
 	// In
 	ftotal float64 // Total units in flow
-	imin   float64 // Min Packet servicetime
-	imax   float64 // Max Packet servicetime
+	imin   float64 // Min TestPacket servicetime
+	imax   float64 // Max TestPacket servicetime
 
 	// Out
 	idealPercent  float64
@@ -26,7 +51,7 @@ type flowDesc struct {
 
 func genFlow(fq *FQScheduler, desc *flowDesc, key int) {
 	for i, t := 1, float64(0); t < desc.ftotal; i++ {
-		it := new(Packet)
+		it := new(TestPacket)
 		it.QueueIdx = key
 		if desc.imin == desc.imax {
 			it.servicetime = desc.imax
@@ -54,10 +79,10 @@ func consumeQueue(t *testing.T, fq *FQScheduler, descs []flowDesc) (float64, err
 		// callback to update virtualtime w/ correct service time for request
 		fq.FinishPacket(i)
 
-		it := i
+		it := i.(*TestPacket)
 		seq := seqs[it.QueueIdx]
 		if seq+1 != it.seq {
-			return 0, fmt.Errorf("Packet for flow %d came out of queue out-of-order: expected %d, got %d", it.QueueIdx, seq+1, it.seq)
+			return 0, fmt.Errorf("TestPacket for flow %d came out of queue out-of-order: expected %d, got %d", it.QueueIdx, seq+1, it.seq)
 		}
 		seqs[it.QueueIdx] = it.seq
 
@@ -137,16 +162,31 @@ func TestOneBurstingFlow(t *testing.T) {
 	flowStdDevTest(t, flows, 0)
 }
 
+func initQueues(n int) []*Queue {
+	queues := make([]*Queue, 0, n)
+	for i := 0; i < n; i++ {
+		queues = append(queues, &Queue{
+			Packets: []FQPacket{},
+		})
+	}
+	return queues
+}
+
 func flowStdDevTest(t *testing.T, flows []flowDesc, expectedStdDev float64) {
 	runtime.GOMAXPROCS(runtime.NumCPU())
-	queues := InitQueues(len(flows))
+	queues := initQueues(len(flows))
 
 	// a fake clock that returns the current time is used for enqueing which
 	// returns the same time (now)
 	// this simulates all queued requests coming at the same time
 	now := time.Now()
 	fc := clock.NewFakeClock(now)
-	fq := NewFQScheduler(queues, fc)
+
+	fqqueues := make([]FQQueue, len(queues), len(queues))
+	for i := range queues {
+		fqqueues[i] = queues[i]
+	}
+	fq := NewFQScheduler(fqqueues, fc)
 	for n := 0; n < len(flows); n++ {
 		genFlow(fq, &flows[n], n)
 	}
